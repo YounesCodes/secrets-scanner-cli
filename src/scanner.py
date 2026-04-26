@@ -5,6 +5,7 @@ from rich.console import Console
 from rich.table import Table
 import json
 import yaml
+from collections import defaultdict
 
 PATTERNS = [
     # AWS
@@ -178,8 +179,18 @@ def print_findings_table(findings: list[dict], filepath: str):
 def print_findings_json(findings: list[dict]):
     print(json.dumps(findings, indent=2))
 
+def clean_yaml(findings: list[dict]):
+    grouped = defaultdict(list)
+    for item in findings:
+        fp = item.pop("filepath")
+        grouped[fp].append(item)
+    
+    output = [{"filepath": fp, "findings": f} for fp, f in grouped.items()]
+    return output
+
 def print_findings_yaml(findings: list[dict]):
-    print(yaml.dump(findings))
+    cleaned_findings = clean_yaml(findings)
+    print(yaml.dump(cleaned_findings, default_flow_style=False, sort_keys=False, allow_unicode=True))
 
 def export_findings(findings: list[dict], output_file_name: str):
     if output_file_name and output_file_name.endswith('.json'):
@@ -187,6 +198,7 @@ def export_findings(findings: list[dict], output_file_name: str):
             json.dump(findings, file, indent=2)
     elif output_file_name and (output_file_name.endswith('.yaml') or output_file_name.endswith('.yml')):
         with open(output_file_name, "w") as file:
-                yaml.dump(findings, file)
+                cleaned_yaml = clean_yaml(findings)
+                yaml.dump(cleaned_yaml, file, default_flow_style=False, sort_keys=False, allow_unicode=True)
     else:
         raise ValueError(f"Invalid file extension. Only .json, .yaml/.yml formats accepted.")
