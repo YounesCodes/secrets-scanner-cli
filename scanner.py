@@ -77,6 +77,11 @@ PATTERNS = [
     {"name": "Generic Secret Assignment", "regex": r"(?i)(?:api_key|apikey|api_secret|app_secret|auth_token|access_token|secret_key|private_key|client_secret|password|passwd|pwd)\s*[=:]\s*[\"']?[A-Za-z0-9\-_/+=.]{16,}[\"']?", "multiline": False, "group": "generic"},
 ]
 
+# compile regex
+for pattern in PATTERNS:
+    flags = re.DOTALL if pattern["multiline"] else 0
+    pattern["compiled"] = re.compile(pattern["regex"], flags)
+
 IGNORED_DIRS = {
     # Version control
     ".git", ".svn", ".hg",
@@ -132,38 +137,28 @@ def should_ignore(path: Path) -> bool:
         return True
     return False
 
-def scan_content(content: str, lines: list[str]) -> list[dict]:
+def scan_content(content: str, filepath) -> list[dict]:
     findings = []
 
     for pattern in PATTERNS:
-        # if multiline pattern match \n and compile
-        flags = re.DOTALL if pattern["multiline"] else 0
-        compiled = re.compile(pattern["regex"], flags)
+        for match in pattern["compiled"].finditer(content):
+            findings.append({
 
-        if pattern["multiline"]:
-            for match in compiled.finditer(content):
-                findings.append({
-                    "name": pattern["name"],
-                    "group": pattern["group"],
-                    "line": content[:match.start()].count("\n") + 1,
-                    "match": match.group(),
-                })
-        else:
-            for line_num, line in enumerate(lines, start=1):
-                for match in compiled.finditer(line):
-                    findings.append({
-                        "name": pattern["name"],
-                        "group": pattern["group"],
-                        "line": line_num,
-                        "match": match.group(),
-                    })
+                "name": pattern["name"],
+                "group": pattern["group"],
+                "line": content[:match.start()].count("\n") + 1,
+                "match": match.group(),
+                "filepath": str(filepath)
+            })
 
     return findings
+
 
 def print_findings_table(findings: list[dict], filepath: str):
     console = Console()
     table = Table(title=f"[bold] Filepath: {filepath}[/bold]", show_lines=True)
 
+    table.add_column("Filepath", style="white", width=30)
     table.add_column("Group", style="cyan", width=12)
     table.add_column("Pattern", style="white", width=30)
     table.add_column("Match", style="red", width=40)
@@ -171,6 +166,7 @@ def print_findings_table(findings: list[dict], filepath: str):
 
     for f in findings:
         table.add_row(
+            f["filepath"],
             f["group"],
             f["name"],
             f["match"][:60] + "..." if len(f["match"]) > 60 else f["match"],
@@ -180,24 +176,24 @@ def print_findings_table(findings: list[dict], filepath: str):
     console.print(table)
 
 def print_findings_json(findings: list[dict], filepath):
-        print("=" * 50)
-        print("\033[1m" + f"Filepath: {filepath}" + "\033[0m")
-        print("=" * 50)
-        print(json.dumps(findings, indent=2))
+    print(json.dumps(findings, indent=2))
 
 def print_findings_yaml(findings: list[dict], filepath):
-        print("=" * 50)
-        print("\033[1m" + f"Filepath: {filepath}" + "\033[0m")
-        print("=" * 50)
-        print(yaml.dump(findings))
+    print(yaml.dump(findings))
 
 def export_findings(findings: list[dict], output_file_name: str):
-    if output_file_name:
-        if output_file_name.endswith('.json'):
-            with open(output_file_name, "a") as file:
-                json.dump(findings, file, indent=2)
-        elif (output_file_name.endswith('.yaml') or output_file_name.endswith('.yml')):
-            with open(output_file_name, "a") as file:
+    if output_file_name and output_file_name.endswith('.json'):
+        with open(output_file_name, "a") as file:
+            json.dump(findings, file, indent=2)
+    elif output_file_name and (output_file_name.endswith('.yaml') or output_file_name.endswith('.yml')):
+        with open(output_file_name, "a") as file:
                 yaml.dump(findings, file)
-        else:
-            raise ValueError(f"Invalid file extension. Only .json, .yaml/.yml formats accepted.")
+    else:
+        raise ValueError(f"Invalid file extension. Only .json, .yaml/.yml formats accepted.")
+
+def fix_json_formatting(filename: str):
+    with open(filename, "r") as file:
+        content = file.read()
+    with open(filename, "w") as file:
+        fixed = re.sub(r"\]\s*\[", ",", content)
+        file.write(fixed)

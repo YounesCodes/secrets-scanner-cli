@@ -30,11 +30,13 @@ for item in path.rglob('*'):
             with open(item, 'r') as f:
                 content = f.read()
                 lines = content.splitlines()
-                findings = scanner.scan_content(content, lines)
+                findings = scanner.scan_content(content, item)
                 #print(findings)
                 if findings:
                     if args.output:
                         scanner.export_findings(findings=findings, output_file_name=args.output)
+                        if args.output.endswith('.json'):
+                            scanner.fix_json_formatting(filename=args.output)
                     elif not args.format or args.format == 'table':
                         scanner.print_findings_table(findings=findings, filepath=item)
                     elif args.format == 'json':
