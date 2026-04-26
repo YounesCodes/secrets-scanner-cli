@@ -148,7 +148,7 @@ def scan_content(content: str, filepath) -> list[dict]:
                 "group": pattern["group"],
                 "line": content[:match.start()].count("\n") + 1,
                 "match": match.group(),
-                "filepath": str(filepath)
+                "filepath": filepath.as_posix()
             })
 
     return findings
@@ -156,7 +156,7 @@ def scan_content(content: str, filepath) -> list[dict]:
 
 def print_findings_table(findings: list[dict], filepath: str):
     console = Console()
-    table = Table(title=f"[bold] Filepath: {filepath}[/bold]", show_lines=True)
+    table = Table(title=f"[bold] Directory/file: {filepath.as_posix()}[/bold]", show_lines=True)
 
     table.add_column("Filepath", style="white", width=30)
     table.add_column("Group", style="cyan", width=12)
@@ -175,25 +175,18 @@ def print_findings_table(findings: list[dict], filepath: str):
 
     console.print(table)
 
-def print_findings_json(findings: list[dict], filepath):
+def print_findings_json(findings: list[dict]):
     print(json.dumps(findings, indent=2))
 
-def print_findings_yaml(findings: list[dict], filepath):
+def print_findings_yaml(findings: list[dict]):
     print(yaml.dump(findings))
 
 def export_findings(findings: list[dict], output_file_name: str):
     if output_file_name and output_file_name.endswith('.json'):
-        with open(output_file_name, "a") as file:
+        with open(output_file_name, "w") as file:
             json.dump(findings, file, indent=2)
     elif output_file_name and (output_file_name.endswith('.yaml') or output_file_name.endswith('.yml')):
-        with open(output_file_name, "a") as file:
+        with open(output_file_name, "w") as file:
                 yaml.dump(findings, file)
     else:
         raise ValueError(f"Invalid file extension. Only .json, .yaml/.yml formats accepted.")
-
-def fix_json_formatting(filename: str):
-    with open(filename, "r") as file:
-        content = file.read()
-    with open(filename, "w") as file:
-        fixed = re.sub(r"\]\s*\[", ",", content)
-        file.write(fixed)
