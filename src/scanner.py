@@ -6,6 +6,8 @@ from rich.table import Table
 import json
 import yaml
 from collections import defaultdict
+import math
+from collections import Counter 
 
 PATTERNS = [
     # AWS
@@ -74,14 +76,47 @@ PATTERNS = [
     {"name": "Redis Connection String", "regex": r"(?i)redis://:[^@]+@[^\s\"']+", "multiline": False, "group": "database"},
     {"name": "RabbitMQ Connection String", "regex": r"(?i)amqp://[^:]+:[^@]+@[^\s\"']+", "multiline": False, "group": "database"},
 
+        # AI / LLM
+    {"name": "OpenAI API Key", "regex": r"sk-[a-zA-Z0-9]{48}", "multiline": False, "group": "openai"},
+    {"name": "Anthropic API Key", "regex": r"sk-ant-api03-[a-zA-Z0-9\-_]{93}-AA", "multiline": False, "group": "anthropic"},
+    {"name": "HuggingFace Token", "regex": r"hf_[a-zA-Z0-9]{34}", "multiline": False, "group": "huggingface"},
+
+    # Discord
+    {"name": "Discord Bot Token", "regex": r"[MNO][a-zA-Z0-9_-]{23,25}\.[a-zA-Z0-9_-]{6}\.[a-zA-Z0-9_-]{27}", "multiline": False, "group": "discord"},
+    {"name": "Discord Webhook", "regex": r"https://discord\.com/api/webhooks/[0-9]+/[a-zA-Z0-9_-]+", "multiline": False, "group": "discord"},
+
+    # Cloud / Infrastructure
+    {"name": "DigitalOcean PAT", "regex": r"dop_v1_[a-f0-9]{64}", "multiline": False, "group": "digitalocean"},
+    {"name": "Heroku API Key", "regex": r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", "multiline": False, "group": "heroku"},
+    {"name": "Supabase API Key", "regex": r"sbp_[a-zA-Z0-9]{40}", "multiline": False, "group": "supabase"},
+
+    # Tools / Productivity
+    {"name": "Notion API Key", "regex": r"secret_[a-zA-Z0-9]{43}", "multiline": False, "group": "notion"},
+    {"name": "Datadog Access Token", "regex": r"ddo_[A-Za-z0-9]{32}", "multiline": False, "group": "datadog"},
+    
+    # GitLab
+    {"name": "GitLab Personal Access Token", "regex": r"glpat-[a-zA-Z0-9\-=_]{20}", "multiline": False, "group": "gitlab"},
+
+
     # Generic
     {"name": "Generic Secret Assignment", "regex": r"(?i)(?:api_key|apikey|api_secret|app_secret|auth_token|access_token|secret_key|private_key|client_secret|password|passwd|pwd)\s*[=:]\s*[\"']?[A-Za-z0-9\-_/+=.]{16,}[\"']?", "multiline": False, "group": "generic"},
 ]
 
 # compile regex
+# pattern regex
 for pattern in PATTERNS:
     flags = re.DOTALL if pattern["multiline"] else 0
     pattern["compiled"] = re.compile(pattern["regex"], flags)
+
+# entropy regex
+ENTROPY_PATTERNS = [
+    {"name":"Entropy (String inside quotes)","regex": r"['\"][a-zA-Z0-9+/=]{20,}['\"]","group":"entropy"}, 
+    {"name":"Entropy (Long unbroken word)","regex": r"\b[a-zA-Z0-9]{20,}\b","group":"entropy"}
+]
+
+for p in ENTROPY_PATTERNS:
+    p["compiled"] = re.compile(p["regex"])
+
 
 IGNORED_DIRS = {
     # Version control
@@ -138,17 +173,38 @@ def should_ignore(path: Path) -> bool:
         return True
     return False
 
+def calculate_entropy(word):
+    length = len(word)
+    counts = Counter(word).values()
+    return -sum((c / length) * math.log2(c / length) for c in counts)
+    
+
 def scan_content(content: str, filepath) -> list[dict]:
     findings = []
 
     for pattern in PATTERNS:
         for match in pattern["compiled"].finditer(content):
+            s = match.group()
             findings.append({
-
                 "name": pattern["name"],
                 "group": pattern["group"],
                 "line": content[:match.start()].count("\n") + 1,
-                "match": match.group(),
+                "match": s[:4] + "*" * 8 + s[-4:],
+                "filepath": filepath.as_posix()
+            })
+    for entropy_pattern in ENTROPY_PATTERNS:
+        for match in entropy_pattern["compiled"].finditer(content):
+            word = match.group()
+            score = calculate_entropy(word)
+            # skip big blocks
+            if len(word) > 200:
+                continue
+            if score > 3.0:
+                findings.append({
+                "name": entropy_pattern["name"],
+                "group": entropy_pattern["group"],
+                "line": content[:match.start()].count("\n") + 1,
+                "match": word[:3] + "*" * 8 + word[-4:],
                 "filepath": filepath.as_posix()
             })
 

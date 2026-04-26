@@ -1,6 +1,5 @@
 import scanner
 import argparse
-import pprint
 from pathlib import Path
 import pyfiglet 
 import re
@@ -21,7 +20,6 @@ def main():
     
     if not path.exists():
         raise ValueError(f"Directory/file does not exist.")
-        return 0 
 
     if path.is_file():
         with open(path,'r') as f:
@@ -39,7 +37,6 @@ def main():
 
     if not all_findings:
         print(f"No secrets found in {args.directory}")
-        return 1
     else:
         if args.output:
             scanner.export_findings(findings=all_findings, output_file_name=args.output)
@@ -55,7 +52,6 @@ def main():
             scanner.print_findings_yaml(findings=all_findings)
         else:
             raise ValueError(f"Invalid --format flag value, available formats: json,yaml,table (default).")
-    return 1
 
 if __name__ == '__main__':
     main()
