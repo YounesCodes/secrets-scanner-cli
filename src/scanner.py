@@ -185,26 +185,31 @@ def scan_content(content: str, filepath) -> list[dict]:
     for pattern in PATTERNS:
         for match in pattern["compiled"].finditer(content):
             s = match.group()
+            line = content[:match.start()].count("\n") + 1
+            redacted_s = s[:4] + "*" * 8 + s[-4:]
             findings.append({
                 "name": pattern["name"],
                 "group": pattern["group"],
-                "line": content[:match.start()].count("\n") + 1,
-                "match": s[:4] + "*" * 8 + s[-4:],
+                "line": line,
+                "match": redacted_s,
                 "filepath": filepath.as_posix()
             })
     for entropy_pattern in ENTROPY_PATTERNS:
         for match in entropy_pattern["compiled"].finditer(content):
             word = match.group()
             score = calculate_entropy(word)
+            line = content[:match.start()].count("\n") + 1
+            redacted_match = word[:4] + "*" * 8 + word[-4:]
             # skip big blocks
             if len(word) > 200:
                 continue
-            if score > 3.0:
+            # check score and if entropy match isnt already caught by regex (duplicate)
+            if score > 3.0 and not any((d.get("line") == line and d.get("filepath") == filepath.as_posix()) for d in findings):
                 findings.append({
                 "name": entropy_pattern["name"],
                 "group": entropy_pattern["group"],
-                "line": content[:match.start()].count("\n") + 1,
-                "match": word[:3] + "*" * 8 + word[-4:],
+                "line": line,
+                "match": redacted_match,
                 "filepath": filepath.as_posix()
             })
 
