@@ -1,3 +1,4 @@
 test/
 __pycache__/
 output_bin/
+test_directory/
