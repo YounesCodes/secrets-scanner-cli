@@ -6,6 +6,7 @@ import re
 import subprocess
 import shutil
 import os, stat
+from rich.console import Console
 
 def main():
 
@@ -16,7 +17,7 @@ def main():
         all_findings = []
 
         if not path.exists():
-            raise ValueError(f"Directory/file does not exist.")
+            raise ValueError(f"Directory/file or repo does not exist.")
 
         if path.is_file():
             with open(path,'r') as f:
@@ -76,6 +77,9 @@ def main():
             shutil.rmtree('./temp_repo', onerror=remove_readonly) # cross platform
             print("Repo deleted successfully.")
     elif args.path and not args.url:
+        if args.delete:
+            print("Error: --delete has no effect when scanning local repo.")
+            return 0
         path = Path(args.path)
         print("Scanning directory...")
         scan_loop(path=path, args=args)
