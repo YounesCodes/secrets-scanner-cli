@@ -1,26 +1,20 @@
 import scanner
 import argparse
 from pathlib import Path
-import pyfiglet 
-import re
 import subprocess
 import shutil
 import os, stat
-from rich.console import Console
 
 def main():
 
     def scan_loop(path, args):
-
-        findings_ascii = pyfiglet.figlet_format('Findings :')
-        finding_flag = False
         all_findings = []
 
         if not path.exists():
             raise ValueError(f"Directory/file or repo does not exist.")
 
         if path.is_file():
-            with open(path,'r') as f:
+            with open(path,'r', errors='ignore') as f:
                 content = f.read()
                 findings = scanner.scan_content(content, path)
                 all_findings.extend(findings)
@@ -34,22 +28,19 @@ def main():
                             all_findings.extend(findings)
 
         if not all_findings:
-            print(f"No secrets found in {args.path}")
+            print(f"No secrets found in {path}")
         else:
-            if args.output:
+            if args.output and args.format:
+                scanner.export_findings(findings=all_findings, output_file_name=args.output)
+                scanner.print_findings(findings=all_findings,output_format=args.format,filepath=path)
+                print(f"Findings saved in {args.output}")
+            elif args.output and not args.format:
                 scanner.export_findings(findings=all_findings, output_file_name=args.output)
                 print(f"Findings saved in {args.output}")
-            elif not args.format or args.format == 'table':
-                print(findings_ascii)
-                scanner.print_findings_table(findings=all_findings, filepath=path)
-            elif args.format == 'json':
-                print(findings_ascii)
-                scanner.print_findings_json(findings=all_findings)
-            elif args.format == 'yaml':
-                print(findings_ascii)
-                scanner.print_findings_yaml(findings=all_findings)
+            elif not args.output and args.format:
+                scanner.print_findings(findings=all_findings,output_format=args.format,filepath=path)
             else:
-                raise ValueError(f"Invalid --format flag value, available formats: json,yaml,table (default).")
+                scanner.print_findings(findings=all_findings,output_format='table',filepath=path)
 
     # func to remove .git read-only files and avoid PermissionError
     def remove_readonly(func, path, _):
@@ -64,11 +55,10 @@ def main():
     parser.add_argument('--delete', action='store_true', help="Delete repo after scan")
 
     args = parser.parse_args()
-    url = args.url
 
     if args.url and not args.path:
         print("Cloning repo...")
-        subprocess.run(["git", "clone","--quiet", url, "./temp_repo"])
+        subprocess.run(["git", "clone","--quiet", args.url, "./temp_repo"])
         repo_path = Path("./temp_repo")
         print("Scanning repo...")
         scan_loop(path=repo_path, args=args)

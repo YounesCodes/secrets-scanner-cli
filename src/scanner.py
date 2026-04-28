@@ -8,6 +8,7 @@ import yaml
 from collections import defaultdict
 import math
 from collections import Counter 
+import pyfiglet 
 
 PATTERNS = [
     # AWS
@@ -215,43 +216,45 @@ def scan_content(content: str, filepath) -> list[dict]:
 
     return findings
 
+def print_findings(findings: list[dict], output_format, filepath):
+    findings_ascii = pyfiglet.figlet_format('Findings :')
+    print(findings_ascii)
+    if output_format == 'json':
+        print(json.dumps(findings, indent=2))
+    elif output_format == 'yaml':
+        cleaned_findings = clean_yaml(findings)
+        print(yaml.dump(cleaned_findings, default_flow_style=False, sort_keys=False, allow_unicode=True))
+    elif output_format == 'table' or not output_format:
+        # print table
+        console = Console()
+        table = Table(title=f"[bold] Directory/file: {filepath.as_posix()}[/bold]", show_lines=True)
 
-def print_findings_table(findings: list[dict], filepath: str):
-    console = Console()
-    table = Table(title=f"[bold] Directory/file: {filepath.as_posix()}[/bold]", show_lines=True)
+        table.add_column("Filepath", style="white", width=50)
+        table.add_column("Group", style="cyan", width=10)
+        table.add_column("Pattern", style="white", width=30)
+        table.add_column("Match", style="red", width=20)
+        table.add_column("Line", style="yellow", width=3)
 
-    table.add_column("Filepath", style="white", width=30)
-    table.add_column("Group", style="cyan", width=12)
-    table.add_column("Pattern", style="white", width=30)
-    table.add_column("Match", style="red", width=40)
-    table.add_column("Line", style="yellow", width=6)
+        for f in findings:
+            table.add_row(
+                f["filepath"],
+                f["group"],
+                f["name"],
+                f["match"][:60] + "..." if len(f["match"]) > 60 else f["match"],
+                str(f["line"]),
+            )
 
-    for f in findings:
-        table.add_row(
-            f["filepath"],
-            f["group"],
-            f["name"],
-            f["match"][:60] + "..." if len(f["match"]) > 60 else f["match"],
-            str(f["line"]),
-        )
+        console.print(table)
 
-    console.print(table)
-
-def print_findings_json(findings: list[dict]):
-    print(json.dumps(findings, indent=2))
 
 def clean_yaml(findings: list[dict]):
     grouped = defaultdict(list)
     for item in findings:
-        fp = item.pop("filepath")
-        grouped[fp].append(item)
-    
+        fp = item["filepath"]
+        entry = {k: v for k, v in item.items() if k != "filepath"}
+        grouped[fp].append(entry)
     output = [{"filepath": fp, "findings": f} for fp, f in grouped.items()]
     return output
-
-def print_findings_yaml(findings: list[dict]):
-    cleaned_findings = clean_yaml(findings)
-    print(yaml.dump(cleaned_findings, default_flow_style=False, sort_keys=False, allow_unicode=True))
 
 def export_findings(findings: list[dict], output_file_name: str):
     if output_file_name and output_file_name.endswith('.json'):
