@@ -1,0 +1,28 @@
+name: Package and publish tool
+on: 
+  release:
+    types: [created]
+
+jobs:
+  package_publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install hatch and build
+        run: |
+          pip install hatch 
+          hatch build
+
+      - name: Publish
+        env:
+          HATCH_INDEX_USER: __token__
+          HATCH_INDEX_AUTH: ${{ secrets.PYPI_API_TOKEN }}
+        run: hatch publish
+
+      
