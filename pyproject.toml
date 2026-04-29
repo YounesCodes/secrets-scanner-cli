@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "secrets-scanner"
+version = "0.1.0"
+description = "CLI tool to detect hardcoded secrets in source code"
+requires-python = ">=3.10"
+dependencies = [
+    "rich",
+    "pyyaml",
+    "pyfiglet",
+]
+
+[project.scripts]
+secrets-scan = "secrets_scanner.scanner:main"
+
+[tool.hatch.build.targets.wheel]
+exclude = [
+    "tests/",
+    "dev/",
+]

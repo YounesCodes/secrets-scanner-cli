@@ -1,4 +1,4 @@
-import scanner
+import utils
 import argparse
 from pathlib import Path
 import subprocess
@@ -15,31 +15,31 @@ def main():
         if path.is_file():
             with open(path,'r', errors='ignore') as f:
                 content = f.read()
-                findings = scanner.scan_content(content, path)
+                findings = utils.scan_content(content, path)
                 all_findings.extend(findings)
         else:
             for item in path.rglob('*'):
-                if not scanner.should_ignore(item):
+                if not utils.should_ignore(item):
                     if item.is_file():
                         with open(item, 'r', errors='ignore') as f:
                             content = f.read()
-                            findings = scanner.scan_content(content, item)
+                            findings = utils.scan_content(content, item)
                             all_findings.extend(findings)
 
         if not all_findings:
             print(f"No secrets found in {path}")
         else:
             if args.output and args.format:
-                scanner.export_findings(findings=all_findings, output_file_name=args.output)
-                scanner.print_findings(findings=all_findings,output_format=args.format,filepath=path)
+                utils.export_findings(findings=all_findings, output_file_name=args.output)
+                utils.print_findings(findings=all_findings,output_format=args.format,filepath=path)
                 print(f"Findings saved in {args.output}")
             elif args.output and not args.format:
-                scanner.export_findings(findings=all_findings, output_file_name=args.output)
+                utils.export_findings(findings=all_findings, output_file_name=args.output)
                 print(f"Findings saved in {args.output}")
             elif not args.output and args.format:
-                scanner.print_findings(findings=all_findings,output_format=args.format,filepath=path)
+                utils.print_findings(findings=all_findings,output_format=args.format,filepath=path)
             else:
-                scanner.print_findings(findings=all_findings,output_format='table',filepath=path)
+                utils.print_findings(findings=all_findings,output_format='table',filepath=path)
 
     # func to remove .git read-only files and avoid PermissionError
     def remove_readonly(func, path, _):
