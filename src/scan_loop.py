@@ -6,7 +6,6 @@ import shutil
 import os, stat
 
 def main():
-
     def scan_loop(path, args):
         all_findings = []
 
@@ -22,7 +21,7 @@ def main():
             for item in path.rglob('*'):
                 if not scanner.should_ignore(item):
                     if item.is_file():
-                        with open(item, 'r') as f:
+                        with open(item, 'r', errors='ignore') as f:
                             content = f.read()
                             findings = scanner.scan_content(content, item)
                             all_findings.extend(findings)
@@ -58,13 +57,14 @@ def main():
 
     if args.url and not args.path:
         print("Cloning repo...")
-        subprocess.run(["git", "clone","--quiet", args.url, "./temp_repo"])
-        repo_path = Path("./temp_repo")
+        subprocess.run(["git", "clone","--quiet", args.url])
+        repo_name = args.url.rstrip("/").split("/")[-1].removesuffix(".git")
+        repo_path = Path(repo_name)
         print("Scanning repo...")
         scan_loop(path=repo_path, args=args)
         print("Done!")
         if args.delete:
-            shutil.rmtree('./temp_repo', onerror=remove_readonly) # cross platform
+            shutil.rmtree(repo_name, onerror=remove_readonly) # cross platform
             print("Repo deleted successfully.")
     elif args.path and not args.url:
         if args.delete:
@@ -77,8 +77,6 @@ def main():
     else:
         parser.print_help()
         return
-
-    
 
 if __name__ == '__main__':
     main()

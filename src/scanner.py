@@ -77,7 +77,7 @@ PATTERNS = [
     {"name": "Redis Connection String", "regex": r"(?i)redis://:[^@]+@[^\s\"']+", "multiline": False, "group": "database"},
     {"name": "RabbitMQ Connection String", "regex": r"(?i)amqp://[^:]+:[^@]+@[^\s\"']+", "multiline": False, "group": "database"},
 
-        # AI / LLM
+    # AI / LLM
     {"name": "OpenAI API Key", "regex": r"sk-[a-zA-Z0-9]{48}", "multiline": False, "group": "openai"},
     {"name": "Anthropic API Key", "regex": r"sk-ant-api03-[a-zA-Z0-9\-_]{93}-AA", "multiline": False, "group": "anthropic"},
     {"name": "HuggingFace Token", "regex": r"hf_[a-zA-Z0-9]{34}", "multiline": False, "group": "huggingface"},
@@ -98,7 +98,6 @@ PATTERNS = [
     # GitLab
     {"name": "GitLab Personal Access Token", "regex": r"glpat-[a-zA-Z0-9\-=_]{20}", "multiline": False, "group": "gitlab"},
 
-
     # Generic
     {"name": "Generic Secret Assignment", "regex": r"(?i)(?:api_key|apikey|api_secret|app_secret|auth_token|access_token|secret_key|private_key|client_secret|password|passwd|pwd)\s*[=:]\s*[\"']?[A-Za-z0-9\-_/+=.]{16,}[\"']?", "multiline": False, "group": "generic"},
 ]
@@ -117,7 +116,6 @@ ENTROPY_PATTERNS = [
 
 for p in ENTROPY_PATTERNS:
     p["compiled"] = re.compile(p["regex"])
-
 
 IGNORED_DIRS = {
     # Version control
@@ -157,13 +155,13 @@ IGNORED_FILES = {
     # Lock files
     "package-lock.json", "yarn.lock", "poetry.lock", "Pipfile.lock", "composer.lock",
 
-    # Minified
-    "*.min.js", "*.min.css",
-
     # Common false-positive files
     "CHANGELOG.md", "CHANGELOG.txt", "LICENSE", "LICENSE.md",
 }
 
+IGNORED_EXTENSIONS = {
+    "*.min.js", "*.min.css",
+}
 
 def should_ignore(path: Path) -> bool:
     if any(part in IGNORED_DIRS for part in path.parts):
@@ -172,6 +170,9 @@ def should_ignore(path: Path) -> bool:
         return True
     if path.name in IGNORED_FILES:
         return True
+    for i in IGNORED_EXTENSIONS:
+        if path.name.endswith(i):
+            return True
     return False
 
 def calculate_entropy(word):
@@ -179,7 +180,6 @@ def calculate_entropy(word):
     counts = Counter(word).values()
     return -sum((c / length) * math.log2(c / length) for c in counts)
     
-
 def scan_content(content: str, filepath) -> list[dict]:
     findings = []
 
@@ -207,13 +207,12 @@ def scan_content(content: str, filepath) -> list[dict]:
             # check score and if entropy match isnt already caught by regex (duplicate)
             if score > 3.0 and not any((d.get("line") == line and d.get("filepath") == filepath.as_posix()) for d in findings):
                 findings.append({
-                "name": entropy_pattern["name"],
-                "group": entropy_pattern["group"],
-                "line": line,
-                "match": redacted_match,
-                "filepath": filepath.as_posix()
+                    "name": entropy_pattern["name"],
+                    "group": entropy_pattern["group"],
+                    "line": line,
+                    "match": redacted_match,
+                    "filepath": filepath.as_posix()
             })
-
     return findings
 
 def print_findings(findings: list[dict], output_format, filepath):
@@ -243,9 +242,7 @@ def print_findings(findings: list[dict], output_format, filepath):
                 f["match"][:60] + "..." if len(f["match"]) > 60 else f["match"],
                 str(f["line"]),
             )
-
         console.print(table)
-
 
 def clean_yaml(findings: list[dict]):
     grouped = defaultdict(list)
