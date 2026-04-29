@@ -46,12 +46,12 @@ def main():
         os.chmod(path, stat.S_IWRITE)
         func(path)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('path', nargs='?', help="File or directory to scan")
-    parser.add_argument('--format', help="Define output format (json, yaml or table (default))")
-    parser.add_argument('-o','--output', help="Define output file name")
-    parser.add_argument('-u','--url', help="Github repo url")
-    parser.add_argument('--delete', action='store_true', help="Delete repo after scan")
+    parser = argparse.ArgumentParser(prog="secrets-scan", description="Detect hardcoded secrets and credentials in source code.")
+    parser.add_argument('path', nargs='?', help="File or directory to scan (local path)")
+    parser.add_argument('--format', choices=["table", "json", "yaml"], default="table", help="Output format: table (default), json, yaml")
+    parser.add_argument('-o','--output', metavar="FILE", help="Write results to file (e.g. results.json). Requires --format json or yaml")
+    parser.add_argument('-u','--url', metavar="URL", help="GitHub repo URL to clone and scan")
+    parser.add_argument('--delete', action='store_true', help="Delete cloned repo after scan (use with --url)")
 
     args = parser.parse_args()
 
